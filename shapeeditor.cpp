@@ -62,26 +62,15 @@ void ShapeObjectsEditor::AddShape(Shape* shape)
 
 bool ShapeObjectsEditor::SaveToFile(const wchar_t* filename)
 {
-    wchar_t path[MAX_PATH];
-
-    DWORD length = GetModuleFileNameW(nullptr, path, MAX_PATH);
-    if (length == 0 || length >= MAX_PATH)
-        return false;
-
-    wchar_t* slash = wcsrchr(path, L'\\');
-    if (slash == nullptr)
-        return false;
-
-    *(slash + 1) = L'\0';
-
-    if (wcscat_s(path, MAX_PATH, filename) != 0)
+    if (filename == nullptr || filename[0] == L'\0')
         return false;
 
     FILE* file = nullptr;
 
-    if (_wfopen_s(&file, path, L"wb") != 0 || file == nullptr)
+    if (_wfopen_s(&file, filename, L"wb") != 0 || file == nullptr)
     {
-        MessageBoxW(nullptr, path, L"Не вдалося відкрити файл", MB_OK | MB_ICONERROR);
+        MessageBoxW(nullptr, L"Не вдалося відкрити файл для запису",
+            L"Помилка", MB_OK | MB_ICONERROR);
         return false;
     }
 
@@ -90,12 +79,13 @@ bool ShapeObjectsEditor::SaveToFile(const wchar_t* filename)
 
     for (int i = 0; success && i < currentIndex; i++)
     {
-        if (!pcshape[i])
+        if (pcshape[i] == nullptr)
             continue;
 
         wchar_t line[512];
 
-        int len = swprintf_s(line, 512, L"%ls;%d;%d;%d;%d\r\n",
+        int len = swprintf_s(
+            line, 512, L"%ls;%ld;%ld;%ld;%ld\r\n",
             pcshape[i]->GetType(),
             pcshape[i]->GetX1(), pcshape[i]->GetY1(),
             pcshape[i]->GetX2(), pcshape[i]->GetY2());
@@ -106,7 +96,8 @@ bool ShapeObjectsEditor::SaveToFile(const wchar_t* filename)
             break;
         }
 
-        int size = WideCharToMultiByte(CP_UTF8, 0, line, len,
+        int size = WideCharToMultiByte(
+            CP_UTF8, 0, line, len,
             nullptr, 0, nullptr, nullptr);
 
         if (size <= 0)
@@ -117,9 +108,10 @@ bool ShapeObjectsEditor::SaveToFile(const wchar_t* filename)
 
         std::string utf8(size, '\0');
 
-        if (WideCharToMultiByte(CP_UTF8, 0, line, len,
+        if (WideCharToMultiByte(
+            CP_UTF8, 0, line, len,
             &utf8[0], size, nullptr, nullptr) == 0 ||
-            fwrite(utf8.data(), 1, size, file) != (size_t)size)
+            fwrite(utf8.data(), 1, size, file) != static_cast<size_t>(size))
         {
             success = false;
         }
@@ -127,11 +119,6 @@ bool ShapeObjectsEditor::SaveToFile(const wchar_t* filename)
 
     if (fclose(file) != 0)
         success = false;
-
-    if (success)
-        MessageBoxW(nullptr, path, L"CSV збережено тут", MB_OK);
-    else
-        MessageBoxW(nullptr, L"Помилка запису у файл", L"Помилка", MB_OK | MB_ICONERROR);
 
     return success;
 }
